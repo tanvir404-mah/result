@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mb-3">
+  <div class="col-md-6">
+    <form method="get" class="d-flex">
+      <input type="text" name="q" value="{{ q }}" class="form-control me-2" placeholder="Enter Roll">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</div>
+
+{% if result %}
+<div class="card mx-auto" style="max-width: 500px;">
+  <div class="card-body">
+    <h5 class="card-title text-center">Result for Roll: {{ result.roll }}</h5>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">1st Semester GPA: {{ result.gpa1 }}</li>
+      <li class="list-group-item">2nd Semester GPA: {{ result.gpa2 }}</li>
+      <li class="list-group-item">3rd Semester GPA: {{ result.gpa3 }}</li>
+      <li class="list-group-item">4th Semester GPA: {{ result.gpa4 }}</li>
+    </ul>
+  </div>
+</div>
+{% elif q %}
+<p class="text-center text-danger">No result found for roll {{ q }}</p>
+{% endif %}
+{% endblock %}
