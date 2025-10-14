@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.urls import path
 from django.conf import settings
-from django.conf.urls.static import static
 from results import views
 
+
+
 urlpatterns = [
+    path('upload/', views.upload_pdf, name='upload_pdf'),
+    path('', views.search_result, name='search_result'),
     path('admin/', admin.site.urls),
-    path('upload/', views.upload_pdf, name='upload'),
-    path('', views.search_result, name='search'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]

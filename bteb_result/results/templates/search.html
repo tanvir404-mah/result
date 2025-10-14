@@ -1,27 +1,43 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="row justify-content-center mb-3">
-  <div class="col-md-6">
-    <form method="get" class="d-flex">
-      <input type="text" name="q" value="{{ q }}" class="form-control me-2" placeholder="Enter Roll">
-      <button type="submit" class="btn btn-primary">Search</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-5">
+    <h2>Search Student Result</h2>
+    <form method="get">
+        <input type="text" name="q" value="{{ q }}" placeholder="Enter Roll Number" class="form-control mb-3" required>
+        <button type="submit" class="btn btn-primary mb-3">Search</button>
     </form>
-  </div>
-</div>
 
-{% if result %}
-<div class="card mx-auto" style="max-width: 500px;">
-  <div class="card-body">
-    <h5 class="card-title text-center">Result for Roll: {{ result.roll }}</h5>
-    <ul class="list-group list-group-flush">
-      <li class="list-group-item">1st Semester GPA: {{ result.gpa1 }}</li>
-      <li class="list-group-item">2nd Semester GPA: {{ result.gpa2 }}</li>
-      <li class="list-group-item">3rd Semester GPA: {{ result.gpa3 }}</li>
-      <li class="list-group-item">4th Semester GPA: {{ result.gpa4 }}</li>
-    </ul>
-  </div>
-</div>
-{% elif q %}
-<p class="text-center text-danger">No result found for roll {{ q }}</p>
-{% endif %}
-{% endblock %}
+    {% if result %}
+        <h4>Result for Roll: {{ result.roll }}</h4>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Semester</th>
+                    <th>GPA</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in "12345678" %}
+                {% with sem="gpa"|add:i %}
+                <tr>
+                    <td>{{ i }}th Semester</td>
+                    <td>{{ result|attr:sem }}</td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+                {% if result.ref_subjects %}
+                <tr>
+                    <td colspan="2">Ref Subjects: {{ result.ref_subjects }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    {% elif q %}
+        <div class="alert alert-warning">No result found for roll {{ q }}</div>
+    {% endif %}
+</body>
+</html>
