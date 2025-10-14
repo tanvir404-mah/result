@@ -1,8 +1,9 @@
-from django.shortcuts import render ,redirect
+from django.shortcuts import render, redirect
 from .models import ResultPDF, StudentResult
 import pdfplumber
 import re
 
+# Extract text from uploaded PDF
 def extract_text_from_pdf(pdf_path):
     text = ""
     with pdfplumber.open(pdf_path) as pdf:
@@ -10,22 +11,33 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text() or ""
     return text
 
+# Parse PDF text and save StudentResult
 def parse_results(text, pdf_obj):
-    lines = text.split("\n")
-    for line in lines:
-        match = re.search(r"Roll\s*[:\-]?\s*(\d+)", line)
-        if match:
-            roll = match.group(1)
-            name = re.search(r"Name\s*[:\-]?\s*([A-Za-z ]+)", line)
-            grade = re.search(r"GPA\s*[:\-]?\s*([0-9.]+)", line)
-            StudentResult.objects.create(
-                pdf=pdf_obj,
-                roll=roll,
-                name=name.group(1).strip() if name else "",
-                grade=grade.group(1) if grade else "",
-                marks_text=line
-            )
+    # Example line: 748010 { gpa4: ref, gpa3: 2.60, gpa2: 3.01, gpa1: 2.95, ref_sub: 27141(T) }
+    pattern = r'(\d+)\s*\{([^\}]+)\}'
+    matches = re.findall(pattern, text)
 
+    for match in matches:
+        roll = match[0]
+        data = match[1]
+
+        gpa_fields = {}
+        # GPA: can be number or 'ref'
+        gpa_pattern = r'gpa(\d+):\s*([\d.]+|ref)'
+        for gpa_match in re.findall(gpa_pattern, data):
+            sem, value = gpa_match
+            gpa_fields[f"gpa{sem}"] = value  # Save as string to allow 'ref'
+
+        # Ref subjects
+        ref_match = re.search(r'ref:\s*([0-9T,P, ]+)', data)
+        ref_subjects = ref_match.group(1).strip() if ref_match else ""
+
+        # Create StudentResult
+        student_data = {'pdf': pdf_obj, 'roll': roll, 'ref_subjects': ref_subjects}
+        student_data.update(gpa_fields)
+        StudentResult.objects.create(**student_data)
+
+# Upload PDF view
 def upload_pdf(request):
     message = ""
     if request.method == "POST":
@@ -38,6 +50,7 @@ def upload_pdf(request):
         message = "PDF processed successfully!"
     return render(request, 'upload.html', {'message': message})
 
+# Search result by roll
 def search_result(request):
     query = request.GET.get('q', '')
     result = None
@@ -46,13 +59,9 @@ def search_result(request):
             result = StudentResult.objects.get(roll=query)
         except StudentResult.DoesNotExist:
             result = None
-
     return render(request, 'search.html', {'result': result, 'q': query})
 
-
-
-from django.shortcuts import render
-from .models import ResultPDF, StudentResult
+from .models import StudentResult
 import pdfplumber
 import re
 
@@ -62,25 +71,30 @@ def process_pdf(pdf_obj):
         for page in pdf.pages:
             text += page.extract_text() or ""
 
-    # Example line in PDF: 646967 (gpa4: 2.30, gpa3: 2.80, gpa2: 3.10, gpa1: 3.12)
-    pattern = r'(\d+)\s*\(gpa4:\s*([\d.]+),\s*gpa3:\s*([\d.]+),\s*gpa2:\s*([\d.]+),\s*gpa1:\s*([\d.]+)\)'
+    # Match each student's result line
+    # Example: 747990 { gpa4: ref, gpa3: ref, gpa2: 3.08, gpa1: 2.93, ref_sub: 26811(T), 27041(T), 27141(T) }
+    pattern = r'(\d+)\s*\{([^\}]+)\}'
     matches = re.findall(pattern, text)
 
     for match in matches:
         roll = match[0]
-        gpa4 = float(match[1])
-        gpa3 = float(match[2])
-        gpa2 = float(match[3])
-        gpa1 = float(match[4])
+        data = match[1]
 
-        StudentResult.objects.create(
-            pdf=pdf_obj,
-            roll=roll,
-            gpa1=gpa1,
-            gpa2=gpa2,
-            gpa3=gpa3,
-            gpa4=gpa4
-        )
+        # Extract GPA (number or 'ref')
+        gpa_fields = {}
+        gpa_pattern = r'gpa(\d+):\s*([\d.]+|ref)'
+        for gpa_match in re.findall(gpa_pattern, data):
+            sem, value = gpa_match
+            gpa_fields[f"gpa{sem}"] = value  # CharField handles both number & 'ref'
+
+        # Extract ref subjects (everything after ref_sub:)
+        ref_match = re.search(r'ref_sub:\s*([0-9T,P, ,]+)', data)
+        ref_subjects = ref_match.group(1).strip() if ref_match else ""
+
+        # Save in DB
+        student_data = {'pdf': pdf_obj, 'roll': roll, 'ref_subjects': ref_subjects}
+        student_data.update(gpa_fields)
+        StudentResult.objects.create(**student_data)
 
     pdf_obj.processed = True
     pdf_obj.save()
